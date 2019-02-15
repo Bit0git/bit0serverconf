@@ -8,7 +8,7 @@
 # Documentation: http://cloudinit.readthedocs.io/en/0.7.9/index.html
 
 # Set your hostname here, the manage_etc_hosts will update the hosts file entries as well
-hostname: bit0dmw
+hostname: bit0daw
 manage_etc_hosts: true
 # don't write debian.org into apt mirrors
 apt_preserve_sources_list: true

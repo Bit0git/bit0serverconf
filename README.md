@@ -1,21 +1,14 @@
 # bit0serverconf
 # change root password
 passwd
-# update/upgrade distribution
-apt-get update
-apt-get upgrade
+# (OK) update/upgrade distribution
+    cloud-init
 # deploy a container with sshguard 
 sshguard
-# add domain user
-useradd bit0admin
-mkdir /home/bit0admin
-mkdir /home/bit0admin/.ssh
-chmod 700 /home/bit0admin/.ssh
-# Require public key authentication
-vim /home/bit0admin/.ssh/authorized_keys
-    #Add the contents of the id_rsa.pub on your local machine and any other public keys that you want to have access to this server to this file.
-chmod 400 /home/bit0admin/.ssh/authorized_keys
-chown bit0admin:bit0admin /home/bit0admin -R
+# (OK) add domain user
+    cloud-init
+# (OK) require public key authentication
+    cloud-init
 # sudo password
 passwd deploy
 visudo

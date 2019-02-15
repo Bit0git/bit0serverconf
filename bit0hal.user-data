@@ -1,0 +1,63 @@
+#cloud-config: 
+# vim: syntax=yaml
+#
+
+# The current version of cloud-init in the Hypriot rpi-64 is 0.7.9
+# When dealing with cloud-init, it is SUPER important to know the version
+# I have wasted many hours creating servers to find out the module I was trying to use wasn't in the cloud-init version I had
+# Documentation: http://cloudinit.readthedocs.io/en/0.7.9/index.html
+
+# Set your hostname here, the manage_etc_hosts will update the hosts file entries as well
+hostname: bit0dmw
+manage_etc_hosts: true
+# don't write debian.org into apt mirrors
+apt_preserve_sources_list: true
+
+# You could modify this for your own user information
+users:
+  - name: nope
+    gecos: "BiT0 Administrator"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    primary-group: bit0
+    groups: users,docker,adm,dialout,audio,plugdev,netdev,video,sudo
+    ssh-import-id: None
+    lock_passwd: true
+    ssh-authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDKErOj2rAZMkgoPaGAVs1UKIQFglkWhZx9idtImJPBXdDBzsawTP3EFUs36bD2beB64Hsj/ebguFRYtQjT9evk/k5QEE8MlJA73tyzBxF+n02UD5CLaPUwgFtrIKxNWYAYa5XvN9UUVJaF5iuXqpiwen80rh0y5op5NDYnPps/VUpG0sdT6qXtF7/boQfKYmRUbRtMst0JInrhzwNkpF2MOWB4B+vtfNbJnYxxjifnBcaqQ9UabmhUTLMz3mhwm23zJptFngDyoxCeJxZRd8tuSc6tRGU2Utj67NZxNv8wh746iGsbRMpyhWUWfIWqzDWTSK9pDgYI9mqeUHlU63POqMBSG7AKAPX3rvZxG1hU6Snsb2Utkm9WTzk0RVlePZTIHyWKfu2Qz1ra/f7QjQ0f9Xku8rTtv3X0eQOePZeNIMLW8jQ0t5R9dkISkFcrwlWjlKYAPAF1ywBCP5bIN9up0K6tOLc+hwkJgqBMqIP3jt8jcCyoYiAPrfQFrVq6jF7ct1oFLbljOi+8cHpl9L5d22M3xP3NkIAtyNVCSZitGQb2FI6+9OK6ZXwtdTELoG51Zuh8qDwtBY+rF8TWuJoDdZVRhhpCe972ffiwb3I0uNSAfjPN9KO6vtIu+m1yyF2MD+/E6m3wy4eX5o4qcHMRTpD3IbvGwijKcg0eW0T7oQ== nope@bit0.net
+
+# # Set the locale of the system
+locale: "en_US.UTF-8"
+
+# # Set the timezone
+# # Value of 'timezone' must exist in /usr/share/zoneinfo
+timezone: "Europe/Rome"
+
+# # Update apt packages on first boot
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+# # Install any additional apt packages you need here
+packages:
+  - ntp
+  - ntfs-3g
+
+# Static IP address
+write_files:
+  - content: |
+      persistent
+      # Generate Stable Private IPv6 Addresses instead of hardware based ones
+      slaac private
+      # static IP configuration:
+      interface eth0
+      static ip_address=192.168.1.20/24
+      # static ip6_address=fd51:42f8:caae:d92e::ff/64
+      static routers=192.168.1.1
+      static domain_name_servers=192.168.1.1 8.8.8.8
+      
+runcmd:
+  # Pickup the hostname changes
+  - [ systemctl, restart, avahi-daemon ]
+
+  # Pickup the daemon.json changes
+  - [ systemctl, restart, docker ]

@@ -1,0 +1,112 @@
+#cloud-config: 
+# vim: syntax=yaml
+#
+
+# The current version of cloud-init in the Hypriot rpi-64 is 0.7.9
+# When dealing with cloud-init, it is SUPER important to know the version
+# I have wasted many hours creating servers to find out the module I was trying to use wasn't in the cloud-init version I had
+# Documentation: http://cloudinit.readthedocs.io/en/0.7.9/index.html
+
+# Set your hostname here, the manage_etc_hosts will update the hosts file entries as well
+#BiT0 qui metti il nome che vuoi abbia la tua macchina
+hostname: nomedellaraspberrydisandro
+manage_etc_hosts: true
+# don't write debian.org into apt mirrors
+apt_preserve_sources_list: true
+
+# You could modify this for your own user information
+#BiT0 qui gestisci gli account da creare. Siccome è un server docker non serve creare account user perche si lavora NEI container non sull host sottostante
+#BiT0 in più, ed io ritengo sia indispensabile se esponi la trappola su internet da casa, io uso autenticazione non tramite password ma con chiave rsa, nel caso non vuoi cambia questa parte
+users:
+  - name: sandrodocker
+    gecos: "Sandro Administrator Account"
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    primary-group: bit0
+    groups: users,docker,adm,dialout,audio,plugdev,netdev,video,sudo
+    ssh-import-id: None
+    lock_passwd: true
+    ssh-authorized-keys:
+      - ssh-rsa chiave ssh
+
+# # Set the locale of the system
+# BiT0 dove si fa codice meglio usare il set caratteri US, non si sa mai
+locale: "en_US.UTF-8"
+
+# # Set the timezone
+# # Value of 'timezone' must exist in /usr/share/zoneinfo
+timezone: "Europe/Rome"
+
+# # Update apt packages on first boot
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+# # Install any additional apt packages you need here
+packages:
+  - ntp
+#BiT0 se prevedi di collegare anche periferiche NTFS tipo hd esterni o chiavette che viaggiano da/verso PC windows, scommenta la linea seguente
+#  - ntfs-3g
+
+#BiT0 un server con ip variabile non s'è mai visto. Occhio a che il router rispetti l'assegnazione richiesta
+# Static IP address
+write_files:
+  - content: |
+      persistent
+      # Generate Stable Private IPv6 Addresses instead of hardware based ones
+      slaac private
+      # static IP configuration:
+      interface eth0
+      static ip_address=192.168.1.10/24
+      # static ip6_address=fd51:42f8:caae:d92e::ff/64
+      static routers=192.168.1.1
+      static domain_name_servers=192.168.1.1 8.8.8.8
+	  
+# set up mount points
+# qui io mi monto due dischi: una chiavetta usb ed un hd NTFS. Cambia con quello che fai tu
+mounts:
+ - [ sda1, /mnt/disk1, "ext4", "defaults,nofail,noatime", "0", "2" ]
+ - [ sdb1, /mnt/disk2, "ntfs-3g", "defaults,nofail,noatime", "0", "2" ]
+ 
+# mount_default_fields
+# These values are used to fill in any entries in 'mounts' that are not
+# complete.  This must be an array, and must have 7 fields.
+mount_default_fields: [ None, None, "auto", "defaults,nofail", "0", "2" ]
+
+
+# swap can also be set up by the 'mounts' module
+# default is to not create any swap files, because 'size' is set to 0
+# swap:
+#   filename: /swap.img
+#   size: "auto" # or size in bytes
+#   maxsize: size in bytes
+      
+runcmd:
+  # Pickup the hostname changes
+  - [ systemctl, restart, avahi-daemon ]
+
+  # Pickup the daemon.json changes
+  - [ systemctl, restart, docker ]
+ 
+ #BiT0 il nostro container dummy per vedere che tutto giri sulla tcp 80
+ - [
+      docker, service, create,
+      "--detach=true",
+      "--name", "helloworld",
+      "--publish", "80:80",
+      "hypriot/rpi-busybox-httpd"
+    ]
+  
+ #BiT0 ci creiamo il nostro container portainer sarà raggiungibile sulla porta TCP 9000 che è mappata sulla 9000 della rete interna docker i mount sono per la persistenza dei dati
+ # occhio che il mio e passwordless perchè non è esposto anche se la macchina lo è. La 9000 la filtro in ingresso dalla WAN quindi da fuori entro in VPN sulla LAN e la rotta da lì è aperta
+ # Run portainer, so we can see our logs and control stuff from a UI
+  - [
+      docker, service, create,
+      "--detach=true",
+      "--name", "portainer",
+      "--publish", "9000:9000",
+      "--mount", "type=volume,src=portainer_data,dst=/data",
+      "--mount", "type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock",
+      "portainer/portainer:linux-arm", "-H", "unix:///var/run/docker.sock", "--no-auth"
+    ]
+	
+	
